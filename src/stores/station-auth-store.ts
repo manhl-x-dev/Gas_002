@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { MMKV } from 'react-native-mmkv';
+
+const mmkv = new MMKV();
 
 export interface StationAdmin {
   id: string;
@@ -9,7 +12,6 @@ export interface StationAdmin {
   stationId: string;
   stationName: string | null;
   regionId: string | null;
-  regionName: string | null;
 }
 
 interface StationAuthState {
@@ -24,9 +26,16 @@ export const useStationAuthStore = create<StationAuthState>()(
     (set) => ({
       admin: null,
       isAuthenticated: false,
-      setAuth: (admin: StationAdmin) => set({ admin, isAuthenticated: true }),
+      setAuth: (admin) => set({ admin, isAuthenticated: true }),
       clearAuth: () => set({ admin: null, isAuthenticated: false }),
     }),
-    { name: 'gas-station-auth-storage' }
+    {
+      name: 'gas-station-auth-storage',
+      storage: createJSONStorage(() => ({
+        getItem: (key) => mmkv.getString(key) ?? null,
+        setItem: (key, value) => mmkv.set(key, value),
+        removeItem: (key) => mmkv.remove(key),
+      })),
+    }
   )
 );

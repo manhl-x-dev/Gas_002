@@ -1,3 +1,29 @@
 {
-  "expo": {}
+  "expo": {
+    "name": "نظام توزيع الغاز",
+    "slug": "gas-distribution",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "gasdist",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#f97316",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gasdist.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f97316"
+      },
+      "package": "com.gasdist.app",
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      ["expo-camera", { "cameraPermission": "يحتاج التطبيق إلى الكاميرا لمسح رموز QR" }]
+    ]
+  }
 }

@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { MMKV } from 'react-native-mmkv';
+
+const mmkv = new MMKV();
 
 export type BeneficiaryType = 'family' | 'single';
 
@@ -24,11 +27,16 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      setAuth: (user: User) => set({ user, isAuthenticated: true }),
+      setAuth: (user) => set({ user, isAuthenticated: true }),
       clearAuth: () => set({ user: null, isAuthenticated: false }),
     }),
     {
       name: 'gas-auth-storage',
+      storage: createJSONStorage(() => ({
+        getItem: (key) => mmkv.getString(key) ?? null,
+        setItem: (key, value) => mmkv.set(key, value),
+        removeItem: (key) => mmkv.remove(key),
+      })),
     }
   )
 );
