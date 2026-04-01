@@ -8,14 +8,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20   # <--- يجب أن تكون 20 أو 22
-      - run: npm install
-      - run: npx expo install
-      - run: npm install -g eas-cli
-      - run: eas build -p android --profile preview --non-interactive
+          node-version: 20
+          cache: 'npm'
+
+      - name: Remove bun.lock (if exists)
+        run: rm -f bun.lock
+
+      - name: Clean install with npm
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --no-package-lock
+
+      - name: Install Expo modules
+        run: npx expo install --npm
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Build APK with EAS
+        run: eas build -p android --profile preview --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
