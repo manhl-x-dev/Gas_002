@@ -20,10 +20,25 @@
         "backgroundColor": "#f97316"
       },
       "package": "com.gasdist.app",
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
-      ["expo-camera", { "cameraPermission": "يحتاج التطبيق إلى الكاميرا لمسح رموز QR" }]
-    ]
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "يحتاج التطبيق إلى الكاميرا لمسح رموز QR"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b903fdc1-012b-4b74-9bbf-3d697f181213"
+      }
+    },
+    "owner": "manhl-devs-organization"
   }
 }
