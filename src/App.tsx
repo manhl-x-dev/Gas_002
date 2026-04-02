@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Upload, CheckCircle, AlertCircle, Loader2, Code, RefreshCw, Smartphone } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Loader2, Code, RefreshCw, Smartphone, ExternalLink, Activity } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
 export default function App() {
@@ -163,6 +163,27 @@ export default function App() {
                 تمت مزامنة {syncResults.filter(r => r.status === 'success').length} ملف بنجاح!
               </div>
             )}
+          </div>
+
+          {/* Section 3: Build Status */}
+          <div className="md:col-span-2 space-y-4 p-6 bg-blue-50 rounded-2xl border border-blue-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Activity className="w-6 h-6 text-blue-600" />
+                <h2 className="text-xl font-bold text-gray-900">حالة بناء التطبيق (Build)</h2>
+              </div>
+              <a 
+                href="https://expo.dev/accounts/manhl-devs-organization/projects/gas-distribution/builds" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-sm text-blue-600 hover:underline font-medium"
+              >
+                فتح صفحة Expo <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+            <p className="text-sm text-blue-800/70">
+              بعد مزامنة الكود، سيبدأ GitHub Actions ببناء التطبيق. يمكنك متابعة التقدم عبر الرابط أعلاه.
+            </p>
           </div>
         </div>
 
