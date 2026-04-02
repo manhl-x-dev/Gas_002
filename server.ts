@@ -80,6 +80,29 @@ async function startServer() {
     }
   });
 
+  // API Route to start local build
+  app.post("/api/local-build", async (req, res) => {
+    const { exec } = await import("child_process");
+    const { promisify } = await import("util");
+    const execAsync = promisify(exec);
+
+    try {
+      console.log("Starting local prebuild...");
+      // Run prebuild
+      await execAsync("npx expo prebuild --platform android --no-install");
+      
+      console.log("Starting Gradle build...");
+      // Run gradlew (assuming it's generated in the android folder)
+      const { stdout, stderr } = await execAsync("cd android && ./gradlew assembleRelease");
+      
+      console.log("Build finished.");
+      res.json({ message: "تم البناء المحلي بنجاح! يمكنك العثور على الـ APK في مجلد android/app/build/outputs/apk/release/" });
+    } catch (error: any) {
+      console.error("Local build failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // API Route to upload assets to GitHub
   app.post("/api/upload-to-github", async (req, res) => {
     const { path: assetPath, content: base64Image } = req.body;
@@ -95,6 +118,14 @@ async function startServer() {
 
     try {
       console.log(`Uploading ${assetPath} to GitHub...`);
+      
+      // Save locally for local build
+      const fs = await import("fs/promises");
+      const dir = path.dirname(assetPath);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(assetPath, Buffer.from(base64Image, 'base64'));
+      console.log(`Saved ${assetPath} locally.`);
+
       let sha;
       try {
         const { data } = await octokit.repos.getContent({ owner, repo, path: assetPath });
