@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "gasdist",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "backgroundColor": "#f97316",
