@@ -6,8 +6,10 @@ import { GoogleGenAI } from "@google/genai";
 export default function App() {
   const [loading, setLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [localBuildLoading, setLocalBuildLoading] = useState(false);
   const [results, setResults] = useState<any[] | null>(null);
   const [syncResults, setSyncResults] = useState<any[] | null>(null);
+  const [localBuildResult, setLocalBuildResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const generateImage = async (ai: any, prompt: string) => {
@@ -43,6 +45,28 @@ export default function App() {
       setError(err.message);
     } finally {
       setSyncLoading(false);
+    }
+  };
+
+  const startLocalBuild = async () => {
+    setLocalBuildLoading(true);
+    setLocalBuildResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/local-build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'فشل البناء المحلي');
+
+      setLocalBuildResult(data.message);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLocalBuildLoading(false);
     }
   };
 
@@ -161,6 +185,31 @@ export default function App() {
               <div className="p-3 bg-green-50 text-green-700 rounded-lg text-xs flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
                 تمت مزامنة {syncResults.filter(r => r.status === 'success').length} ملف بنجاح!
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Local Build */}
+          <div className="space-y-4 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <Smartphone className="w-6 h-6 text-purple-600" />
+              <h2 className="text-xl font-bold text-gray-900">البناء المحلي</h2>
+            </div>
+            <p className="text-sm text-gray-500">توليد ملفات الأندرويد وبناء الـ APK محلياً (يتطلب أيقونات).</p>
+            <button
+              onClick={startLocalBuild}
+              disabled={localBuildLoading}
+              className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${
+                localBuildLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 active:scale-95'
+              }`}
+            >
+              {localBuildLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Smartphone className="w-5 h-5" />}
+              {localBuildLoading ? 'جاري البناء...' : 'بدء البناء المحلي'}
+            </button>
+            {localBuildResult && (
+              <div className="p-3 bg-purple-50 text-purple-700 rounded-lg text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                {localBuildResult}
               </div>
             )}
           </div>
