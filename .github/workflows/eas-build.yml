@@ -2,7 +2,7 @@ name: Build Android APK
 on:
   push:
     branches:
-      - master # تأكد أن هذا هو اسم الفرع الرئيسي لديك (master أو main)
+      - master # تأكد أن هذا هو اسم الفرع الرئيسي لديك
 
 jobs:
   build:
@@ -26,8 +26,8 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           npm install
-          # إجبار النظام على تثبيت المكتبات الناقصة وتصحيح التوافق مع SDK 52
+          # تثبيت إضافي لضمان وجود المكتبات المطلوبة لـ SDK 52
           npx expo install expo-asset expo-constants --fix
 
       - name: 🚀 Build APK with EAS
-        run: npx eas build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile preview --non-interactive
