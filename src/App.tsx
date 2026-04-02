@@ -184,6 +184,9 @@ export default function App() {
             <p className="text-sm text-blue-800/70">
               بعد مزامنة الكود، سيبدأ GitHub Actions ببناء التطبيق. يمكنك متابعة التقدم عبر الرابط أعلاه.
             </p>
+            <div className="p-3 bg-yellow-50 border border-yellow-100 rounded-xl text-[10px] text-yellow-800">
+              ⚠️ ملاحظة: تم تحسين إصدارات المكتبات (MMKV) لضمان التوافق مع Android Gradle.
+            </div>
           </div>
         </div>
 
