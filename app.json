@@ -4,26 +4,24 @@
     "slug": "gas-distribution",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "gasdist",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/splash-icon.png",
       "backgroundColor": "#f97316",
       "resizeMode": "contain"
     },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.gasdist.app"
-    },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#f97316"
       },
       "package": "com.gasdist.app",
       "permissions": [
         "CAMERA",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "RECORD_AUDIO"
       ]
     },
     "plugins": [
