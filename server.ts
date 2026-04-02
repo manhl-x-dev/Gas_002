@@ -34,6 +34,13 @@ async function startServer() {
         "dist/**",
         ".next/**",
         ".expo/**",
+        "android/build/**",
+        "android/app/build/**",
+        "android/.gradle/**",
+        "android/.idea/**",
+        "**/*.png",
+        "**/*.jpg",
+        "**/*.jpeg",
         "package-lock.json",
         "bun.lockb"
       ];
@@ -52,21 +59,35 @@ async function startServer() {
           const content = await fs.readFile(filePath);
           const base64Content = content.toString("base64");
 
-          let sha;
-          try {
-            const { data } = await octokit.repos.getContent({ owner, repo, path: filePath });
-            if (!Array.isArray(data)) sha = data.sha;
-          } catch (e) {}
+          const syncFile = async (retryCount = 0) => {
+            let sha;
+            try {
+              const { data } = await octokit.repos.getContent({ owner, repo, path: filePath });
+              if (!Array.isArray(data)) sha = data.sha;
+            } catch (e) {}
 
-          await octokit.repos.createOrUpdateFileContents({
-            owner,
-            repo,
-            path: filePath,
-            message: `chore: sync ${filePath} from AI Studio`,
-            content: base64Content,
-            sha,
-          });
-          results.push({ path: filePath, status: "success" });
+            try {
+              await octokit.repos.createOrUpdateFileContents({
+                owner,
+                repo,
+                path: filePath,
+                message: `chore: sync ${filePath} from AI Studio`,
+                content: base64Content,
+                sha,
+              });
+              return { status: "success" };
+            } catch (err: any) {
+              // If SHA mismatch, retry once with fresh SHA
+              if (err.status === 409 && retryCount < 1) {
+                console.log(`SHA mismatch for ${filePath}, retrying...`);
+                return await syncFile(retryCount + 1);
+              }
+              throw err;
+            }
+          };
+
+          const res = await syncFile();
+          results.push({ path: filePath, ...res });
         } catch (err: any) {
           console.error(`Failed to sync ${filePath}:`, err.message);
           results.push({ path: filePath, status: "failed", error: err.message });
