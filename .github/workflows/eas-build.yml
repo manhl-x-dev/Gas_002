@@ -1,65 +1,33 @@
-name: Build APK with EAS
-
+name: Build Android APK
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - master # تأكد أن هذا هو اسم الفرع الرئيسي لديك (master أو main)
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: 🏗 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🏗 Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      # إزالة bun.lock لتجنب استخدام bun
-      - name: Remove bun.lock if exists
-        run: rm -f bun.lock
-
-      # تنظيف التبعيات وإعادة تثبيتها باستخدام npm
-      - name: Clean install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --no-package-lock
-
-      # تثبيت وحدات Expo باستخدام npm
-      - name: Install Expo modules
-        run: npx expo install --npm
-
-      # تثبيت EAS CLI
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
-      # التحقق من وجود EXPO_TOKEN (خطوة تشخيص)
-      - name: Debug EXPO_TOKEN
-        run: |
-          if [ -n "$EXPO_TOKEN" ]; then
-            echo "✅ EXPO_TOKEN is set (length: ${#EXPO_TOKEN})"
-          else
-            echo "❌ EXPO_TOKEN is NOT set"
-            exit 1
-          fi
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      # بناء APK باستخدام EAS
-      - name: Build APK with EAS
-        run: npx eas build -p android --profile preview --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      # رفع APK كـ artifact
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - name: 🏗 Setup Expo and EAS
+        uses: expo/expo-github-action@v8
         with:
-          name: app-debug
-          path: |
-            *.apk
-            **/build/outputs/apk/**/*.apk
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: |
+          npm install
+          # إجبار النظام على تثبيت المكتبات الناقصة وتصحيح التوافق مع SDK 52
+          npx expo install expo-asset expo-constants --fix
+
+      - name: 🚀 Build APK with EAS
+        run: npx eas build --platform android --profile preview --non-interactive
