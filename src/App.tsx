@@ -1,157 +1,181 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { I18nManager, Text, TextInput, View, ActivityIndicator, StyleSheet } from 'react-native';
-import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold } from '@expo-google-fonts/cairo';
-import { MMKV } from 'react-native-mmkv';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuthStore } from './stores/auth-store';
-import { useStationAuthStore } from './stores/station-auth-store';
-import { StatusBar } from 'expo-status-bar';
-import { colors } from './lib/theme';
-import Toast from 'react-native-toast-message';
-import LoginScreen from './screens/LoginScreen';
-import RegisterScreen from './screens/RegisterScreen';
-import CitizenDashboard from './screens/CitizenDashboard';
-import StationDashboard from './screens/StationDashboard';
+import { useState } from 'react';
+import { motion } from 'motion/react';
+import { Upload, CheckCircle, AlertCircle, Loader2, Code, RefreshCw, Smartphone } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
 
-// Initialize i18n (side effect import — runs before component mount)
-import './lib/i18n';
-
-// ─── Read saved locale & set RTL BEFORE any component renders ───
-const mmkvGlobal = new MMKV();
-const savedLocale = mmkvGlobal.getString('app-locale') || 'ar';
-const shouldBeRtl = savedLocale === 'ar';
-
-if (shouldBeRtl && !I18nManager.isRTL) {
-  I18nManager.forceRTL(true);
-} else if (!shouldBeRtl && I18nManager.isRTL) {
-  I18nManager.forceRTL(false);
-}
-
-// ─── Prevent splash from auto-hiding ───
-SplashScreen.preventAutoHideAsync().catch(() => { /* ignore */ });
-
-// ─── Types ───
-export type RootStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  CitizenDashboard: undefined;
-  StationDashboard: undefined;
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-// ─── App Component ───
 export default function App() {
-  const [appReady, setAppReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [results, setResults] = useState<any[] | null>(null);
+  const [syncResults, setSyncResults] = useState<any[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const citizenAuth = useAuthStore((s) => s.isAuthenticated);
-  const stationAuth = useStationAuthStore((s) => s.isAuthenticated);
+  const generateImage = async (ai: any, prompt: string) => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts: [{ text: prompt }] },
+    });
 
-  // Load Cairo font
-  const [fontsLoaded, fontError] = useFonts({
-    Cairo_400Regular,
-    Cairo_600SemiBold,
-    Cairo_700Bold,
-  });
-
-  // Prepare app (fetch locale, wait minimum splash time)
-  useEffect(() => {
-    async function prepare() {
-      try {
-        // Minimum splash display for smooth UX
-        await new Promise((resolve) => setTimeout(resolve, 800));
-      } catch (e) {
-        console.warn('App prepare error:', e);
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return part.inlineData.data; // base64 string
       }
-      setAppReady(true);
     }
-    prepare();
-  }, []);
+    throw new Error("لم يتم توليد الصورة");
+  };
 
-  // Apply Cairo as default font globally (after fonts loaded)
-  useEffect(() => {
-    if (fontsLoaded) {
-      // Set Cairo as global default font for Text and TextInput
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (Text as any).defaultProps = { ...(Text as any).defaultProps, allowFontScaling: false };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (TextInput as any).defaultProps = { ...(TextInput as any).defaultProps, allowFontScaling: false };
+  const syncCodeToGitHub = async () => {
+    setSyncLoading(true);
+    setSyncResults(null);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/sync-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'فشل مزامنة الكود');
+
+      setSyncResults(data.results);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSyncLoading(false);
     }
-  }, [fontsLoaded]);
+  };
 
-  // Hide splash when everything is ready
-  const hideSplash = useCallback(async () => {
-    if (appReady && fontsLoaded) {
-      SplashScreen.setOptions({ fade: true });
-      await SplashScreen.hideAsync();
+  const generateAndUploadAssets = async () => {
+    setLoading(true);
+    setResults(null);
+    setError(null);
+
+    try {
+      // Initialize Gemini on Frontend
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      
+      const assets = [
+        { path: "assets/icon.png", prompt: "A professional, modern, flat design app icon for a gas distribution system. Stylized white gas cylinder on a vibrant orange background (#f97316). 1024x1024." },
+        { path: "assets/splash-icon.png", prompt: "A professional, modern, flat design splash screen icon for a gas distribution system. Stylized white gas cylinder on a vibrant orange background (#f97316). 2000x2000." },
+        { path: "assets/adaptive-icon.png", prompt: "A professional, modern, flat design adaptive icon for a gas distribution system. Stylized white gas cylinder on a vibrant orange background (#f97316). 1024x1024." }
+      ];
+
+      const uploadResults = [];
+
+      for (const asset of assets) {
+        try {
+          console.log(`Generating ${asset.path}...`);
+          const base64Image = await generateImage(ai, asset.prompt);
+
+          console.log(`Uploading ${asset.path} to GitHub via Proxy...`);
+          const response = await fetch('/api/upload-to-github', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              path: asset.path,
+              content: base64Image
+            }),
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'فشل الرفع');
+
+          uploadResults.push({ path: asset.path, status: 'success' });
+        } catch (err: any) {
+          uploadResults.push({ path: asset.path, status: 'failed', error: err.message });
+        }
+      }
+
+      setResults(uploadResults);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  }, [appReady, fontsLoaded]);
-
-  useEffect(() => {
-    hideSplash().catch(() => { /* ignore */ });
-  }, [hideSplash]);
-
-  // Show loading screen while preparing
-  if (!appReady || !fontsLoaded) {
-    return (
-      <View style={styles.loading}>
-        <View style={styles.logoBox}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </View>
-    );
-  }
+  };
 
   return (
-    <View style={styles.root}>
-      <NavigationContainer>
-        <StatusBar style="light" backgroundColor={colors.primary} />
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: shouldBeRtl ? 'slide_from_left' : 'slide_from_right',
-            contentStyle: { backgroundColor: '#fffbeb' },
-          }}
-        >
-          {!citizenAuth && !stationAuth && (
-            <>
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-            </>
-          )}
-          {stationAuth && (
-            <Stack.Screen name="StationDashboard" component={StationDashboard} />
-          )}
-          {citizenAuth && (
-            <Stack.Screen name="CitizenDashboard" component={CitizenDashboard} />
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-      <Toast />
-    </View>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden"
+      >
+        <div className="bg-orange-600 p-8 text-white text-center">
+          <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+            <Smartphone className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold">لوحة تحكم المطور</h1>
+          <p className="text-orange-100 mt-2">إدارة بناء التطبيق ومزامنته مع GitHub</p>
+        </div>
+
+        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Section 1: Assets */}
+          <div className="space-y-4 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <Upload className="w-6 h-6 text-orange-600" />
+              <h2 className="text-xl font-bold text-gray-900">الأيقونات</h2>
+            </div>
+            <p className="text-sm text-gray-500">توليد أيقونات التطبيق وشاشة الترحيب بالذكاء الاصطناعي.</p>
+            <button
+              onClick={generateAndUploadAssets}
+              disabled={loading}
+              className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${
+                loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 active:scale-95'
+              }`}
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+              {loading ? 'جاري التوليد...' : 'توليد ورفع الأيقونات'}
+            </button>
+            {results && (
+              <div className="space-y-2 mt-4">
+                {results.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs p-2 bg-white rounded-lg border border-gray-100">
+                    <span className="truncate max-w-[120px]">{r.path}</span>
+                    {r.status === 'success' ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-red-500" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Code Sync */}
+          <div className="space-y-4 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="flex items-center gap-3 mb-2">
+              <Code className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-bold text-gray-900">مزامنة الكود</h2>
+            </div>
+            <p className="text-sm text-gray-500">رفع كافة التعديلات والإصلاحات الحالية مباشرة إلى GitHub.</p>
+            <button
+              onClick={syncCodeToGitHub}
+              disabled={syncLoading}
+              className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${
+                syncLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              }`}
+            >
+              {syncLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+              {syncLoading ? 'جاري المزامنة...' : 'مزامنة كافة الملفات'}
+            </button>
+            {syncResults && (
+              <div className="p-3 bg-green-50 text-green-700 rounded-lg text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                تمت مزامنة {syncResults.filter(r => r.status === 'success').length} ملف بنجاح!
+              </div>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <div className="mx-8 mb-8 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-right">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">حدث خطأ</p>
+              <p className="text-xs text-red-600 mt-1">{error}</p>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fffbeb',
-  },
-  logoBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primaryLight,
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-  },
-});
